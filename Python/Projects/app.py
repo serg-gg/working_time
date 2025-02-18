@@ -5,68 +5,91 @@ import re
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 
+# Определяем порядок месяцев для сортировки
+months_order = {
+    "Styczeń": 1, "Luty": 2, "Marzec": 3, "Kwiecień": 4, "Maj": 5, "Czerwiec": 6,
+    "Lipiec": 7, "Sierpień": 8, "Wrzesień": 9, "Październik": 10, "Listopad": 11, "Grudzień": 12
+}
+
 def search_hours():
-    search_name = entry_name.get().strip().lower()
-    if not search_name:
+    search_surname = entry_name.get().strip().lower()
+    if not search_surname:
         messagebox.showwarning("Błąd", "Wpisz nazwisko!")
         return
     
     folder_path = "C:\\Users\\uzytkownik\\Desktop\\Nowy folder"
     files = glob.glob(os.path.join(folder_path, "*.xlsx"))
-    person_filtered_data = []
-    worked_months = {}
+    all_workers = {}
 
     for file in files:
         if file.startswith(os.path.join(folder_path, "~$")):
             continue
         try:
-            df = pd.read_excel(file, skiprows=1, usecols="E,F,J,K")
-            if "Nazwisko" not in df.columns:
+            df = pd.read_excel(file, skiprows=1)
+            required_columns = ["Imię", "Nazwisko", "Rbh dzienne", "Rbh nocne"]
+            
+            if not all(col in df.columns for col in required_columns):
                 continue  
-            df = df.dropna(subset=["Nazwisko"])
+            
+            df = df.dropna(subset=["Nazwisko", "Imię"])
             df = df.fillna(0).infer_objects(copy=False)
-            filtered_data = df[df["Nazwisko"].str.lower() == search_name]
+
+            filtered_data = df[df["Nazwisko"].str.lower() == search_surname]
 
             if not filtered_data.empty:
-                person_filtered_data.extend(filtered_data.values.tolist())
                 match = re.search(r"(\w+)_.*?(\d{4})", os.path.basename(file))
                 if match:
                     month, year = match.groups()
-                    key = f"{month.capitalize()} {year}"
-                    dzienne_godziny = filtered_data.iloc[:, 2].astype(float).sum()
-                    nocne_godziny = filtered_data.iloc[:, 3].astype(float).sum()
-                    worked_months[key] = [dzienne_godziny, nocne_godziny]
+                    year = int(year)
+                    month_order = months_order.get(month.capitalize(), 0)
+                    
+                    if month_order == 0:
+                        continue  
+
+                    for _, row in filtered_data.iterrows():
+                        imie = row["Imię"]
+                        nazwisko = row["Nazwisko"]
+                        try:
+                            dzienne_godziny = float(row["Rbh dzienne"])  
+                            nocne_godziny = float(row["Rbh nocne"])    
+                        except ValueError:
+                            continue  
+
+                        full_name = f"{imie} {nazwisko}"
+                        if full_name not in all_workers:
+                            all_workers[full_name] = {}
+                        
+                        all_workers[full_name][(year, month_order, month)] = [dzienne_godziny, nocne_godziny]
 
         except PermissionError:
             messagebox.showerror("Błąd", f"Brak dostępu do pliku: {file}\nZamknij Excel!")
         except Exception as e:
             messagebox.showerror("Błąd", f"Problem z plikiem {file}:\n{e}")
 
-    if person_filtered_data:
-        imie = person_filtered_data[0][0]
-        nazwisko = person_filtered_data[0][1]
-        
-        result_text = f"👤 Pracownik: {imie} {nazwisko}\n\n📅 Pracował w miesiącach:\n"
-        total_dzienne = total_nocne = 0
-        for month in sorted(worked_months):
-            dzienne, nocne = worked_months[month]
-            total_dzienne += dzienne
-            total_nocne += nocne
-            result_text += f"- {month}: {dzienne + nocne} h (Dziennych: {dzienne} h, Nocnych: {nocne} h)\n"
-        
-        total_wszystkie = total_dzienne + total_nocne
-        result_text += f"\n📊 Łączne godziny:\n"
-        result_text += f"- Dziennych: {total_dzienne} h\n"
-        result_text += f"- Nocnych: {total_nocne} h\n"
-        result_text += f"- Wszystkich: {total_wszystkie} h\n"
+    if all_workers:
+        result_text = ""
+        for full_name, worked_months in all_workers.items():
+            result_text += f"👤 Pracownik: {full_name}\n📅 Pracował w miesiącach:\n"
+            total_dzienne = total_nocne = 0
+
+            for year, month_order, month in sorted(worked_months.keys()):
+                dzienne, nocne = worked_months[(year, month_order, month)]
+                total_dzienne += dzienne
+                total_nocne += nocne
+                result_text += f"- {month} {year}: {dzienne + nocne} h (Dziennych: {dzienne} h, Nocnych: {nocne} h)\n"
+            
+            total_wszystkie = total_dzienne + total_nocne
+            result_text += f"\n📊 Łączne godziny:\n"
+            result_text += f"- Dziennych: {total_dzienne} h\n"
+            result_text += f"- Nocznych: {total_nocne} h\n"
+            result_text += f"- Wszystkich: {total_wszystkie} h\n\n"
 
         text_result.config(state=tk.NORMAL)
         text_result.delete(1.0, tk.END)
         text_result.insert(tk.END, result_text)
         text_result.config(state=tk.DISABLED)
-
     else:
-        messagebox.showinfo("Brak wyników", f"Nie znaleziono danych dla '{search_name}'.")
+        messagebox.showinfo("Brak wyników", f"Nie znaleziono danych dla '{search_surname}'.")
 
 # === ГРАФИЧЕСКИЙ ИНТЕРФЕЙС ===
 root = tk.Tk()
