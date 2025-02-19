@@ -34,6 +34,10 @@ def search_hours():
             df = df.dropna(subset=["Nazwisko", "Imię"])
             df = df.fillna(0).infer_objects(copy=False)
 
+            # Приводим к единообразному формату (имя и фамилия с заглавной буквы)
+            df["Nazwisko"] = df["Nazwisko"].str.strip().str.capitalize()
+            df["Imię"] = df["Imię"].str.strip().str.capitalize()
+
             filtered_data = df[df["Nazwisko"].str.lower() == search_surname]
 
             if not filtered_data.empty:
@@ -81,7 +85,7 @@ def search_hours():
             total_wszystkie = total_dzienne + total_nocne
             result_text += f"\n📊 Łączne godziny:\n"
             result_text += f"- Dziennych: {total_dzienne} h\n"
-            result_text += f"- Nocznych: {total_nocne} h\n"
+            result_text += f"- Nocnych: {total_nocne} h\n"
             result_text += f"- Wszystkich: {total_wszystkie} h\n\n"
 
         text_result.config(state=tk.NORMAL)
