@@ -13,9 +13,9 @@ MONTHS_MAP = {
 }
 
 def search_hours():
-    search_name = entry_name.get().strip().lower()
-    if not search_name:
-        messagebox.showwarning("Błąd", "Wpisz nazwisko!")
+    search_full_name = entry_full_name.get().strip().lower()
+    if not search_full_name:
+        messagebox.showwarning("Błąd", "Wpisz imię i nazwisko!")
         return
     
     folder_path = "C:\\Users\\uzytkownik\\Desktop\\Nowy folder"
@@ -28,13 +28,13 @@ def search_hours():
             continue
         try:
             df = pd.read_excel(file, skiprows=1, usecols="E,F,J,K")
-            if "Nazwisko" not in df.columns:
+            if "Nazwisko" not in df.columns or "Imię" not in df.columns:
                 continue  
-            df = df.dropna(subset=["Nazwisko"])
+            df = df.dropna(subset=["Nazwisko", "Imię"])
             df = df.fillna(0).infer_objects(copy=False)
-            df["Nazwisko"] = df["Nazwisko"].str.lower()
+            df["Pełne Imię"] = df["Imię"].str.lower() + " " + df["Nazwisko"].str.lower()
             
-            filtered_data = df[df["Nazwisko"] == search_name]
+            filtered_data = df[df["Pełne Imię"] == search_full_name]
             
             if not filtered_data.empty:
                 person_filtered_data.extend(filtered_data.values.tolist())
@@ -98,22 +98,21 @@ def search_hours():
         text_result.config(state=tk.DISABLED)
 
     else:
-        messagebox.showinfo("Brak wyników", f"Nie znaleziono danych dla '{search_name}'.")
+        messagebox.showinfo("Brak wyników", f"Nie znaleziono danych dla '{search_full_name}'.")
 
 # === ГРАФИЧЕСКИЙ ИНТЕРФЕЙС ===
 root = tk.Tk()
 root.title("Godziny pracy")
-root.geometry("700x600")
+root.geometry("600x450")
 
-tk.Label(root, text="Wpisz nazwisko:", font=("Arial", 12)).pack(pady=5)
-entry_name = tk.Entry(root, font=("Arial", 12))
-entry_name.pack(pady=5)
+tk.Label(root, text="Wpisz imię i nazwisko:", font=("Arial", 12)).pack(pady=5)
+entry_full_name = tk.Entry(root, font=("Arial", 12), width=40)
+entry_full_name.pack(pady=5)
 
 btn_search = tk.Button(root, text="Szukaj", font=("Arial", 12), command=search_hours)
 btn_search.pack(pady=10)
 
-text_result = scrolledtext.ScrolledText(root, font=("Arial", 12), height=20, width=70, state=tk.DISABLED)
+text_result = scrolledtext.ScrolledText(root, font=("Arial", 12), height=18, width=70, state=tk.DISABLED)
 text_result.pack(pady=10)
 
 root.mainloop()
-
